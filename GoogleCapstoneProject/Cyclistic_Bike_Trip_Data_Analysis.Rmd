@@ -1,0 +1,338 @@
+---
+title: "Cyclistic Data Analysis"
+author: "Edgar Elias"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    number_sections: no
+    toc: yes
+---
+
+
+# Introduction 
+This case study was conducted as my capstone project for the 8th and final course of the **Google Data Analytics Professional Certificate** program to help 
+students demonstrate the knowledge and skills gained during the whole course. I applied Google's procedures (Ask, Prepare, Process, Analyze, Share, and Act)
+to my own findings and analysis which are displayed below along with visualizations.
+
+# Scenario
+The purpose of this script is to consolidate downloaded bike data and conduct analysis for Cyclistic, a bike-share company based in Chicago, Illinois. The director of marketing
+believes the company's primary path to success depends on maximizing the number of annual memberships amongs it's customers. Cyclistic's finance analysts have found
+that annual member riders are much more profitable than casual riders. Therefore the marketing team is aimed at converting casual riders to annual memebers, but in order to 
+do so, the marketing team needs better understanding on how annual members and casual riders differ and what can be done to maximize the conversion of casual riders into a
+membership.
+
+# Business Task
+As my business task, I was given the key question to answer: “How do member and casual riders use Cyclistic bikes differently?”
+
+# Data Sources
+The data has been provided by Motivate International Inc. under this *[license](https://ride.divvybikes.com/data-license-agreement)*. The data is a collection of 12 months of bike
+trip data starting from April 2021 to March 2022. The procedure for my subsequent analysis was conducted in R Studio since this program could efficiently help in data importing, combining, cleaning, filtering, analyzing and visualizing.
+
+# Data Cleaning and Manipulations
+
+### Setting up environment
+1. Load following libraries to inspect, wrangle, clean and manipulate the data
+
+```{r}
+library(tidyverse)  #helps wrangle data
+library(lubridate)  #helps wrangle date attributes
+library(ggplot2)  #helps visualize data
+library(dplyr) #helps manipulate data
+library(knitr) #helps filter out data
+getwd() #displays your working directory
+setwd("/Users/EdgarElias/Desktop/CaseStudy/Tripdata") #sets working directory to simplify calls to data 
+```
+
+2. Collect Data & Upload tripdata sets (csv files) of last 12 months.
+
+```{r}
+apr_2021 <- read_csv("202104-divvy-tripdata.csv")
+may_2021 <- read_csv("202105-divvy-tripdata.csv")
+jun_2021 <- read_csv("202106-divvy-tripdata.csv")
+jul_2021 <- read_csv("202107-divvy-tripdata.csv")
+aug_2021 <- read_csv("202108-divvy-tripdata.csv")
+sep_2021 <- read_csv("202109-divvy-tripdata.csv")
+oct_2021 <- read_csv("202110-divvy-tripdata.csv")
+nov_2021 <- read_csv("202111-divvy-tripdata.csv")
+dec_2021 <- read_csv("202112-divvy-tripdata.csv")
+jan_2022 <- read_csv("202201-divvy-tripdata.csv")
+feb_2022 <- read_csv("202202-divvy-tripdata.csv")
+mar_2022 <- read_csv("202203-divvy-tripdata.csv")
+```
+
+3. Wrangling and combining data into a single file (Make sure column names match) 
+
+```{r}
+colnames(apr_2021)
+colnames(may_2021)
+colnames(jun_2021)
+colnames(jul_2021)
+colnames(aug_2021)
+colnames(sep_2021)
+colnames(oct_2021)
+colnames(nov_2021)
+colnames(dec_2021)
+colnames(jan_2022)
+colnames(feb_2022)
+colnames(mar_2022)
+```
+
+4. Inspect data frames for incongruences
+
+```{r}
+str(apr_2021)
+str(may_2021)
+str(jun_2021)
+str(jul_2021)
+str(aug_2021)
+str(sep_2021)
+str(oct_2021)
+str(nov_2021)
+str(dec_2021)
+str(jan_2022)
+str(feb_2022)
+str(mar_2022)
+```
+
+### Combine data
+1. Individual trip data frames are combined into one large data frame with name "all_trip_data"
+
+```{r}
+all_trip_data <- bind_rows(apr_2021, may_2021, jun_2021, jul_2021, aug_2021, sep_2021, oct_2021, nov_2021, dec_2021, jan_2022, feb_2022, mar_2022)
+```
+
+2. Inspect "all_trip_data"
+```{r}
+colnames(all_trip_data) #List of column names
+nrow(all_trip_data) #How many rows are in data frame?
+dim(all_trip_data) #Dimensions of the data frame?
+head(all_trip_data) #See the first 10 rows of data frame. 
+tail(all_trip_data) #See the last 10 rows of data frame.
+str(all_trip_data) #See list of columns and data types EX: numeric, character, etc.
+summary(all_trip_data) #Statistical summary of data for numeric info
+```
+
+### Clean and Organize Data
+1. Create copy (all_trip_data_v2) of combined data frame (all_trip_data) for cleaning and transforming it, starting with removing duplicate rides by checking ride_id 
+
+```{r}
+all_trip_data_v2 <- all_trip_data[!duplicated(all_trip_data$ride_id), ]
+```
+
+2. Remove unused columns (latitudes, longitudes, start and end station id's)
+```{r}
+all_trip_data_v2 = subset(all_trip_data_v2, select = -c(start_station_id, end_station_id, start_lat, end_lat, start_lng, end_lng))
+```
+
+3. Add columns from started_at observation for matching month, day, year, day_of_the_week of each trip/ride
+```{r}
+all_trip_data_v2$month <- format(as.Date(all_trip_data_v2$started_at), "%b") #adds month column
+all_trip_data_v2$day <- format(as.Date(all_trip_data_v2$started_at), "%d") #adds day column
+all_trip_data_v2$year <- format(as.Date(all_trip_data_v2$started_at), "%y") #adds year
+all_trip_data_v2$day_of_week <- format(as.Date(all_trip_data_v2$started_at), "%a") #adds character day of week
+```
+
+4. Create a column called “ride_length.” Calculating the length of each ride by subtracting the column “started_at” from the column “ended_at”.
+```{r}
+all_trip_data_v2$ride_length <- difftime(all_trip_data_v2$ended_at, all_trip_data_v2$started_at, unit = "min")
+```
+
+5. Remove column started_at, ended_at since we have a split started column consisting of month, day and year and not concerned of ended_at since it was already used to calculated ride_length
+```{r}
+all_trip_data_v2 = subset(all_trip_data_v2, select = -c(started_at, ended_at))
+```
+
+6. Inspect structure of new all_trip_data_v2 columns
+```{r}
+str(all_trip_data_v2)
+```
+
+7. Change ride_length to a numeric data type  
+```{r}
+all_trip_data_v2$ride_length <- as.numeric(all_trip_data_v2$ride_length)
+```
+
+8. Ensure ride_length is a numeric type
+```{r}
+is.numeric(all_trip_data_v2$ride_length)
+```
+
+9. Remove trips with no trip duration and false station names like HQ (ride length <= 0 min)
+```{r}
+all_trip_data_v2 <- all_trip_data_v2[!(all_trip_data_v2$start_station_name == "HQ QR" | all_trip_data_v2$ride_length<=0), ]
+```
+
+10. Remove NA rows from "member_casual" column
+```{r}
+all_trip_data_v2 <- all_trip_data_v2[!is.na(all_trip_data_v2$member_casual), ]
+```
+
+11. Remove outlier trips with trip duration longer than 48hrs (ride length > 2880 min)
+```{r}
+all_trip_data_v2 <- all_trip_data_v2[!(all_trip_data_v2$ride_length > 2880), ]
+```
+
+# Prepare for Analysis
+
+1. Statistical view of all_trip_data_v2
+```{r}
+summary(all_trip_data_v2)
+str(all_trip_data_v2)  
+```
+
+```{r}
+sum(str_count(all_trip_data_v2$member_casual, "casual")) #total sum of casual riders
+sum(str_count(all_trip_data_v2$member_casual, "member")) #total sum of member riders
+summary(all_trip_data_v2$ride_length) #summary of ride_length 
+```
+
+2. Retrieve the top 5 starting station names to see where most rides start from April 2021 - March 2022
+
+After exploring the number of rides from all riders, Streeter Dr. & Grand Ave, Michigan Ave & Oak St, Wells St & Concord Ln, Millennium Park, and Clark St & Elm St were the most frequent starting stations from April 2021 - March 2022.
+```{r}
+top_5_start_station_names <- sort(table(all_trip_data_v2$start_station_name), decreasing=TRUE)[1:5]
+knitr::kable(top_5_start_station_names,
+             col.names = c("Starting Station Name", "Number of rides"), 
+             caption = "Top 5 Starting Stations (April 2021 - March 2022)")
+```
+
+3. Retrieve the top 5 station names by user type
+```{r}
+members_only <- all_trip_data_v2[!(all_trip_data_v2$member_casual == "casual"),]
+casuals_only <- all_trip_data_v2[!(all_trip_data_v2$member_casual == "member"),]
+top_5_members_start <- sort(table(members_only$start_station_name), decreasing=TRUE)[1:5]
+top_5_members_end <- sort(table(members_only$end_station_name), decreasing=TRUE)[1:5]
+top_5_casuals_start <- sort(table(casuals_only$start_station_name), decreasing=TRUE)[1:5]
+top_5_casuals_end <- sort(table(casuals_only$end_station_name), decreasing=TRUE)[1:5]
+```
+
+After exploring the number of rides from Annual Members, Kingsbury St & Kinzie St, Clark St & Elm St, Wells St & Concord Ln, Wells St & Elm St, and Dearborn St & Erie St were the most frequent starting stations from April 2021 - March 2022.
+```{r}
+knitr::kable(top_5_members_start,
+             col.names = c("Starting Station Name", "Number of Rides"), 
+             caption = "Annual Members, Top 5 Starting Stations (April 2021 - March 2022)")
+```
+
+After exploring the number of rides from Annual Members, Kingsbury St & Kinzie St, Clark St & Elm St, Wells St & Concord Ln, Wells St & Elm St, and Dearborn St & Erie St were the most frequent ending stations from April 2021 - March 2022.
+```{r}
+knitr::kable(top_5_members_end,
+             col.names = c("Ending Station Name", "Number of Rides"), 
+             caption = "Annual Members, Top 5 Ending Stations (April 2021 - March 2022)")
+```
+
+After exploring the number of rides from Casual Riders, Streeter Dr & Grand Ave	, Millennium Park, Michigan Ave & Oak St, Shedd Aquarium, and Theater on the Lake were the most frequent starting stations from April 2021 - March 2022.
+```{r}
+knitr::kable(top_5_casuals_start,
+             col.names = c("Starting Station Name", "Number of Rides"), 
+             caption = "Casual Users, Top 5 Starting Stations (April 2021 - March 2022)")
+```
+
+After exploring the number of rides from Casual Riders, Streeter Dr & Grand Ave	, Millennium Park, Michigan Ave & Oak St, Theater on the Lake, and Shedd Aquarium on the Lake were the most frequent ending stations from April 2021 - March 2022.
+```{r}
+knitr::kable(top_5_casuals_end,
+             col.names = c("Ending Station Name", "Number of Rides"), 
+             caption = "Casual Users, Top 5 Ending Stations (April 2021 - March 2022)")
+```
+
+4. Analyze bike type by rider type
+
+Casual users overwhelmingly preferred docked bikes compared to member users which do not seem to use them. Casual riders used classic bikes more than electric bikes by almost a double margin while annual members used classic bikes more than electric bikes by an alarming margin.
+```{r}
+member_bike_type <- table(members_only$rideable_type) 
+casual_bike_type <- table(casuals_only$rideable_type)
+knitr::kable(casual_bike_type, 
+             col.names = c("Bike Type", "Number of Rides"), 
+             caption = "Casual Users, Total Rides by Bike Type (April 2021 - March 2022)")
+knitr::kable(member_bike_type, 
+             col.names = c("Bike Type", "Number of Rides"), 
+             caption = "Annual Members, Total Rides by Bike Type (April 2021 - March 2022)")
+
+```
+
+# Visualizations
+
+1. Visualization showing the number of rides per day of week by type of user, ordered day_of_week Mon-Sun.
+
+Graph depicts member riders taking a similar average number of rides throughout the week while casual riders seem to prefer taking more rides during the weekend, Saturday and Sunday.
+```{r}
+all_trip_data_v2$day_of_week <- ordered(all_trip_data_v2$day_of_week, levels=c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+all_trip_data_v2 %>% 
+  group_by(member_casual, day_of_week) %>% 
+  summarize(number_of_rides = n()) %>% 
+  arrange(member_casual, day_of_week)  %>% 
+  ggplot(mapping = aes(x = day_of_week, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Cyclistic: Number of Rides per Day of Week", subtitle = "According to User Type, April 2021-March 2022", caption = "Data Source: Motivate International Inc.", x = "Day of Week", y = "Number of Rides", fill = "User Type") +
+  scale_y_continuous(labels = scales::comma)
+```
+
+2. Visualization showing the average ride duration per day of week by type of user
+
+Graph depicts casual users have significantly longer rides than annual members every day of the week.
+```{r}
+all_trip_data_v2 %>% 
+  group_by(member_casual, day_of_week) %>% 
+  summarize(number_of_rides = n(),average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, day_of_week)  %>% 
+  ggplot(aes(x = day_of_week, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Cyclistic: Average Ride Duration per Day of Week", subtitle = "According to User Type, April 2021-March 2022", caption = "Data Source: Motivate International Inc.", x = "Day of Week", y = "Average Ride Duration (minutes)", fill = "User Type")
+```
+
+3. Visualization showing the number of rides per month by user type while reordering months starting with May through April
+
+Graph depicts most casual users rent bikes in the months June through September drastically dropping off bike usage in the winter months. Annual members follow a similar patter to bike rentals as to the casual users peaking in the spring/summer months while falling off in the fall/winter seasons.
+```{r}
+all_trip_data_v2$month <- ordered(all_trip_data_v2$month, levels=c("May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr"))
+all_trip_data_v2 %>% 
+  group_by(member_casual, month) %>% 
+  summarize(number_of_rides = n()) %>% 
+  arrange(member_casual, month)  %>% 
+  ggplot(mapping = aes(x = month, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Cyclistic: Number of Rides per Month", subtitle = "According to User Type, April 2021-March 2022", caption = "Data Source: Motivate International Inc.", x = "Month", y = "Number of Rides", fill = "User Type") + scale_y_continuous(labels = scales::comma)
+```
+
+4. Visualization showing the average ride duration per month by user type
+
+The graph below depicts casual users ride longer in the spring/summer seasons while annual members’ ride lengths are fairly consistent all year-round.
+```{r}
+all_trip_data_v2 %>% 
+  group_by(member_casual, month) %>% 
+  summarize(number_of_rides = n(),average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, month)  %>% 
+  ggplot(aes(x = month, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Cyclistic: Average Ride Duration per Month", subtitle = "According to User Type, April 2021-March 2022", caption = "Data Source: Motivate International Inc.", x = "Month", y = "Average Ride Duration (minutes)", fill = "User Type")
+```
+
+# Recap of Analysis and Visualizations
+
+* I  have determined that Streeter Dr. & Grand Ave, Michigan Ave & Oak St, Wells St & Concord Ln, Millennium Park, and Clark St & Elm St were the most frequent starting stations from April 2021 - March 2022 among all riders.
+
+* Among annual members, annual members most frequently used the Kingsbury St & Kinzie St, Clark St & Elm St, Wells St & Concord Ln, Wells St & Elm St, and Dearborn St & Erie St as their start stations. Casual users most frequently used the Streeter Dr. & Grand Ave, Millennium Park, Michigan Ave & Oak St, Shedd Aquarium, and Theater on the Lake as their start stations.
+
+* Among annual member, annual members most frequently stopped at the Kingsbury St & Kinzie St, Clark St & Elm St, Wells St & Concord Ln, Wells St & Elm St, and Dearborn St & Erie St end stations. Casual riders preffered the Streeter Dr & Grand Ave, Millennium Park, Michigan Ave & Oak St, Theater on the Lake, and Shedd Aquarium end stations.
+
+* Both annual members and casual users overwhelmingly preferred classic bikes. Casual riders used classic bikes more than electric bikes by almost a double margin. Annual members used classic bikes more than electric bikes by an alarming margin while using no docked bikes.
+
+* Member riders take a similar average number of rides throughout the week while casual riders seem to prefer taking more rides during the weekend: Saturday and Sunday. Casual riders have significantly longer rides than annual members every day of the week.
+
+* Casual users rent more bikes in the months of June through September drastically dropping off bike usage in the winter months. Annual members follow a similar pattern to bike rentals as to the casual users, peaking in the spring/summer months while falling off in the fall/winter seasons. Casual users ride longer in the summer/spring seasons while annual members’ ride lengths are fairly consistent all year-round.
+
+
+# Application of Insights
+
+Cyclistic can set up promotions or advertisements around the most frequently used starting and ending stations. These promotions could be ran during the spring summer season to maximize the amount of riders that would encounter the promotions as these months are the peak months for bike rentals. Cyclistic can adjust prices on bike types to encourage more/less usage of a certain type of bike. Dropping the price on electric bikes or running a weekend special price will encourage more electric bike rentals especially within the casual community since casuals go on more rides during the weekend as oppose to members. Cyclistic can offer summer pass membership or weekend pass memberships to convert casual riders to members. This type of pass can be used as a bridge to convert casuals to full year members. Offer a tier system of casual, summer/weekend pass and full year pass with each having its own perks based on tier of membership.
+
+
+
+# Top 3 Recommendations based on Analysis
+
+1. Cyclistic can set up promotions or advertisements around the most frequently used starting and ending stations. These promotions could be run during the spring summer season to maximize the amount of riders that would encounter the promotions as these months are the peak months for bike rentals.
+
+2. Cyclistic can adjust prices on bike types to encourage more/less usage of a certain type of bike. Dropping the price on electric bikes or running a weekend special price will encourage more electric bike rentals especially within the casual community since casuals go on more rides during the weekend as oppose to members. Cyclistic could also offer docked bikes or electric bikes rental rates at a discount to those holding a membership.
+
+3. Since casuals take longer rides and seem to prefer riding on the weekends than Cyclist could introduce a weekend pass allowing unlimited 45 minutes rides on Friday, Saturday and Sunday only that is priced just bellow the annual price.
